@@ -14,32 +14,35 @@ namespace mini_cache
   template <typename R, typename... Args>
   class cache
   {
-  public:
+    public:
     
       cache(std::function<R(Args...)> f):
         f_(f)
       {}
-    
-      
-      R& operator()(Args&&... args)
+
+      template <typename ...Params>
+      R& operator()(Params&&... params)
       {
-        // See if the result we want is in the cache.
-        auto it = cache_.find(std::tuple<Args...>(args...));
+        // Create tuple of args/params.
+        auto a = std::tuple<Params...>(std::forward<Params>(params)...);
         
-        if (it != cache_.end())
-          {
-          return *it;
+        // See if the result we want is in the cache.
+        auto it = cache_.find(a);
+        if (it != cache_.end()){
+          return it->second;
         }
         
-        // It's not in the cache.  Compute, add, and return.
-        R r = f_(args...);
+        // Get iterator to new map entry.
+        R* p_val = &cache_[a];
         
-        cache_[ std::tuple<Args...>(args...) ] = r;
+        // Assign value.
+        *p_val = f_(std::forward<Params>(params)...);
         
-        // TODO: one lookup.
-        return cache_[ std::tuple<Args...>(args...) ];
+        // Return value.
+        return *p_val;
       }
       
+      private:
       
       // The function for which the cache stores results.
       std::function<R(Args...)> f_;
@@ -73,7 +76,7 @@ int main()
   
   mini_cache::cache<double,int,double> c(f);
  
- std::cout << c.f_(5,2) << "\n";
+ std::cout << c(5,2) << "\n";
  
   
   return 0;
